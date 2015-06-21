@@ -1,0 +1,216 @@
+---
+title: "Data Analysis Project"
+author: "odonovdo"
+date: "Tuesday, June 09, 2015"
+output: html_document
+---
+
+
+#Load in data
+
+```{r}
+
+if(!(file.exists(a <-"summarySCC_PM25.rds") & file.exists(b <-"Source_Classification_Code.rds"))){
+      
+      URL <- "https://d396qusza40orc.cloudfront.net/exdata%2Fdata%2FNEI_data.zip"
+      temp <- tempfile()
+      download.file(URL,temp)
+      NEI <- readRDS(unzip(temp,a))
+      SCC <- readRDS(unzip(temp,b))
+      }else{
+            NEI <- readRDS(a)
+            SCC <- readRDS(b)
+            }
+```
+
+#Plot 1
+
+```{r, echo=FALSE}
+
+TotEmmsions <- tapply(NEI$Emissions,NEI$year,sum,na.rm=T)
+fitEmis <- lm(TotEmmsions~as.numeric(names(TotEmmsions)))
+
+par(mfrow =c(1,2))
+my.colors = colorRampPalette(c("red", "blue"))
+png(filename = "Plot1.png")
+
+barplot(TotEmmsions,col =my.colors(length(TotEmmsions)),main="Total Emissions by Year",cex.main=0.8,xlab="Year",ylab=expression('Total PM'[2.5]*" Emission"))
+
+plot(TotEmmsions~as.numeric(names(TotEmmsions)),type="b",col =my.colors(length(TotEmmsions)),main="Total Emissions by Year",cex.main=0.8,xlab="Year",ylab=expression('Total PM'[2.5]*" Emission"),ylim = c(0,max(TotEmmsions)))
+
+abline(fitEmis,col="blue",lty=2)
+
+dev.off()
+```
+
+#Plot 2
+
+```{r, echo=FALSE}
+NEIbalt <- subset(NEI,fips=="24510")
+
+TotEmmsionsbal <- tapply(NEIbalt$Emissions,NEIbalt$year,sum,na.rm=T)
+fitEmisbal <- lm(TotEmmsionsbal~as.numeric(names(TotEmmsionsbal)))
+
+par(mfrow =c(1,2))
+my.colors = colorRampPalette(c("red", "blue"))
+png(filename = "Plot2.png")
+
+barplot(TotEmmsionsbal,col =my.colors(length(TotEmmsionsbal)),main="Total Emissions for Baltimore by Year",cex.main=0.8,xlab="Year",ylab=expression('Total PM'[2.5]*" Emission"))
+
+plot(TotEmmsionsbal~as.numeric(names(TotEmmsionsbal)),type="b",col =my.colors(length(TotEmmsions)),main="Total Emissions for Baltimore by Year",cex.main=0.8,xlab="Year",ylab=expression('Total PM'[2.5]*" Emission"),ylim = c(0,max(TotEmmsionsbal)))
+
+abline(fitEmisbal,col="blue",lty=2)
+dev.off()
+```
+
+#Plot 3
+Of the four types of sources indicated by the type (point, nonpoint, onroad, nonroad) variable, which of these four sources have seen decreases in emissions from 1999–2008 for Baltimore City? Which have seen increases in emissions from 1999–2008? Use the ggplot2 plotting system to make a plot answer this question.
+
+
+```{r, echo=FALSE}
+NEIbalt <- subset(NEI,fips=="24510")
+
+library(reshape2)
+TotEmbalY_T <- tapply(NEIbalt$Emissions,list(NEIbalt$year,NEIbalt$type),sum,na.rm=TRUE)
+
+ToT_Sum <- melt(TotEmbalY_T)
+names(ToT_Sum) <- c("year","type","Emissions")
+
+library(ggplot2)
+png(filename = "Plot3.png")
+
+ggplot(ToT_Sum,aes(x=year,y=Emissions,fill=type))+
+      geom_bar(stat="identity")+
+      scale_x_continuous(breaks=ToT_Sum$year)+
+      scale_fill_brewer(palette="Set1")+
+      theme_bw()+
+      theme(legend.position="none")+
+      xlab("year")+
+      ggtitle(expression('Total PM'[2.5]*" Emission by Type"))+
+      geom_smooth(method="lm",se=FALSE,color="black",linetype=2)+
+      facet_wrap(~type,scales = "free")
+
+dev.off()
+```
+
+#Plot 4
+
+Across the United States, how have emissions from coal combustion-related sources changed from 1999–2008?
+
+
+```{r, echo=FALSE}
+
+NEICoal <- merge(NEI,SCC,by.x="SCC")
+NEICoal <- NEICoal[grepl("Coal",NEICoal$Short.Name,ignore.case = TRUE),]
+
+NEICoalSum <- tapply(NEICoal$Emissions,NEICoal$year,sum,na.rm=TRUE)
+NEICoalSum <- melt(NEICoalSum)
+names(NEICoalSum) <- c("year","EmiVechSummary$yearssions")
+
+png(filename = "Plot4.png")
+ggplot(NEICoalSum,aes(year,Emissions))+
+      geom_bar(stat="identity",aes(fill=as.factor(year)))+
+      scale_fill_brewer(palette="Set1")+
+      geom_smooth(method="lm",se=FALSE,color="black",linetype=2)+
+      scale_x_continuous(breaks=NEICoalSum$year)+
+      theme_bw()+
+      theme(legend.position="none")+
+      ggtitle(expression('Total PM'[2.5]*" Emission by Coal Across US"))
+dev.off()
+```
+
+#Plot 5
+How have emissions from motor vehicle sources changed from 1999–2008 in Baltimore City?
+
+```{r, echo=FALSE}
+
+NEICom <- merge(NEI,SCC,by.x="SCC")
+
+MotVech <- NEICom[grepl("vehicle|motor",NEICom$EI.Sector,ignore.case = T) & NEICom$fips=="24510",]
+
+VechSummary <- tapply(MotVech$Emissions,list(MotVech$year,as.character(MotVech$EI.Sector)),sum,na.rm=TRUE)
+
+library(reshape2)
+VechSummary <- melt(VechSummary)
+names(VechSummary) <- c("year","EI.Source","Emissions")
+
+library(ggplot2)
+library(gridExtra)
+
+png(filename = "Plot5.png")
+a <- ggplot(VechSummary,aes(year,Emissions))+
+      geom_bar(stat="identity",aes(fill=factor(year)))+
+      scale_x_continuous(breaks=VechSummary$year)+
+      scale_fill_brewer(palette="Set1")+
+      theme_bw()+
+      theme(legend.position="none")+
+      xlab("year")+
+      ggtitle(expression('Total PM'[2.5]*" Emission by Motor Vehicle"))
+      
+b <- ggplot(VechSummary,aes(x=year,y=Emissions))+
+      geom_bar(stat="identity",aes(fill=as.factor(year)))+
+      scale_x_continuous(breaks=VechSummary$year)+
+      scale_fill_brewer(palette="Set1")+
+      theme_bw()+
+      xlab("year")+
+      ggtitle(expression('Total PM'[2.5]*" Emission by Sector"))+
+      facet_wrap(~EI.Source,scales = "free")+
+      geom_smooth(method="lm",se=F)+
+      theme(legend.position="none",strip.text.x = element_text(size=9))
+
+grid.arrange(a,b,ncol=2)
+
+dev.off()
+
+```
+
+
+#Plot 6
+Compare emissions from motor vehicle sources in Baltimore City with emissions from motor vehicle sources in Los Angeles County, California (fips == "06037"). Which city has seen greater changes over time in motor vehicle emissions?
+
+```{r, echo=FALSE}
+library(reshape2);library(dplyr);library(ggplot2);library(gridExtra)
+NEICom <- merge(NEI,SCC,by.x="SCC")
+
+MotVech <- NEICom[grepl("vehicle|motor",NEICom$EI.Sector,ignore.case = T) & (NEICom$fips=="24510"|NEICom$fips=="06037"),]
+
+ToT_Sum <- melt(tapply(MotVech$Emissions,list(MotVech$year,MotVech$fips,as.character(MotVech$EI.Sector)),sum))
+names(ToT_Sum) <- c("year","Flips","EI.Sector","Emissions")
+ToT_Sum <- transform(ToT_Sum,Flips=as.factor(Flips))
+levels(ToT_Sum$Flips) <- c("California","Baltimore")
+TotSUM <- dcast(ToT_Sum,year~Flips,sum)
+TotSUM <- mutate(TotSUM,California= California/sum(California),Baltimore= Baltimore/sum(Baltimore))
+
+TotSUM <- melt(TotSUM,id.vars = "year")
+names(TotSUM) <- c("year","Flips","Emissions")
+
+my.colors = colorRampPalette(c("red", "blue"))
+png(filename = "Plot6.png")
+
+a <- ggplot(TotSUM,aes(year,Emissions))+
+      geom_bar(stat="identity",aes(fill=factor(year)))+
+      scale_x_continuous(breaks=TotSUM$year)+
+      scale_fill_brewer(palette="Set1")+
+      theme_bw()+
+      xlab("year")+
+      ggtitle(expression('Total PM'[2.5]*" Emission by City"))+
+      geom_smooth(method="lm",se=F)+
+      facet_grid(~Flips)+
+      theme(legend.position="none",strip.text.x = element_text(size=9))
+
+b <- ggplot(ToT_Sum,aes(x=year,y=Emissions))+
+      geom_bar(stat="identity",aes(fill=as.factor(year)))+
+      scale_x_continuous(breaks=ToT_Sum$year)+
+      scale_fill_brewer(palette="Set1")+
+      theme_bw()+
+      xlab("year")+
+      ggtitle(expression('Total PM'[2.5]*" Emission by EI Sector"))+
+      facet_wrap(Ei.Sector~Flips,scales = "free",ncol = 2)+
+      geom_smooth(method="lm",se=F)+
+      theme(legend.position="none",strip.text.x = element_text(size=9))
+
+grid.arrange(a,b,ncol=2)
+dev.off()
+```
+
+
