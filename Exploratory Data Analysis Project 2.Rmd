@@ -153,13 +153,12 @@ b <- ggplot(VechSummary,aes(x=year,y=Emissions))+
       scale_fill_brewer(palette="Set1")+
       theme_bw()+
       xlab("year")+
-      ggtitle(expression('Total PM'[2.5]*" Emission by Sector"))+
+      ggtitle(expression('Total PM'[2.5]*" Emission by Vehicle Type"))+
       facet_wrap(~EI.Source,scales = "free")+
       geom_smooth(method="lm",se=F)+
       theme(legend.position="none",strip.text.x = element_text(size=9))
 
 grid.arrange(a,b,ncol=2)
-
 dev.off()
 
 ```
@@ -204,8 +203,8 @@ b <- ggplot(ToT_Sum,aes(x=year,y=Emissions))+
       scale_fill_brewer(palette="Set1")+
       theme_bw()+
       xlab("year")+
-      ggtitle(expression('Total PM'[2.5]*" Emission by EI Sector"))+
-      facet_wrap(Ei.Sector~Flips,scales = "free",ncol = 2)+
+      ggtitle(expression('Total PM'[2.5]*" Emission by Vehicle Type"))+
+      facet_wrap(EI.Sector~Flips,scales = "free",ncol = 2)+
       geom_smooth(method="lm",se=F)+
       theme(legend.position="none",strip.text.x = element_text(size=9))
 
